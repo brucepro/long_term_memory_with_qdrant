@@ -9,16 +9,19 @@ generation time.
 
 import gradio as gr
 
-from extensions.long_term_memory.long_term_memory import LTM
+from extensions.long_term_memory_with_qdrant.long_term_memory import LTM
+from extensions.long_term_memory_with_qdrant.utils.chat_parsing import clean_character_message
 
 from modules import chat
 
-
+# === Internal constants (don't change these without good reason) ===
+_MIN_ROWS_TILL_RESPONSE = 5
+_LAST_BOT_MESSAGE_INDEX = -3
 params = {
     "display_name": "Long Term Memory",
     "is_tab": False,
-    "limit": 3,
-    "address": "http://qdrant:6333",
+    "limit": 5,
+    "address": "http://localhost:6333",
     "query_output": "vdb search results",
     'verbose': True,
 }
@@ -53,13 +56,39 @@ def custom_generate_chat_prompt(user_input, state, **kwargs):
     limit = params['limit']
     address = params['address']
     ltm = LTM(collection, verbose, limit, address=address)
+    kwargs["also_return_rows"] = True
+    (bot_prompt, bot_prompt_rows) = chat.generate_chat_prompt(
+        user_input,
+        state,
+        **kwargs,
+    )
+    # === Clean and add new messages to LTM ===
+    # Store the bot's last message.
+    # Avoid storing any of the baked-in bot template responses
+    use_bot_memories = 0
+    if len(bot_prompt_rows) >= _MIN_ROWS_TILL_RESPONSE:
+        bot_message = bot_prompt_rows[_LAST_BOT_MESSAGE_INDEX]
+        clean_bot_message = clean_character_message(state["name2"], bot_message)
 
-    long_term_memories = ltm.store_and_recall(user_input)
-    long_term_memories = [
-        f"{username}: {memory}" for memory in long_term_memories]
+        # Store bot message into database
+        if len(clean_bot_message) >= 10:
+            bot_long_term_memories1 = ltm.store_and_recall(state["name2"],clean_bot_message)
+            use_bot_memories = 1
+            print("-----------------Bot Memories------------------------")
+            print(bot_long_term_memories1)
+            print("------------------End Bot Memories-----------------------")
 
+
+
+    long_term_memories = ltm.store_and_recall(username,user_input)
+    print("--------------User Line Memories---------------------------")
+    print(long_term_memories)
+    print("---------------End User Line Memories--------------------------")
+    
+    if use_bot_memories == 1:
+        long_term_memories.extend(bot_long_term_memories1)
+    
     state['query_output'] = "\n".join(long_term_memories)
-
     # insert the formated vdb outputs after the context but before the chat his
     # tory, this placement seems to work fine but could be played with.
     prompts[1:1] = long_term_memories

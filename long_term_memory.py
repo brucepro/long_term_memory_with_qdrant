@@ -1,5 +1,5 @@
 import random
-
+from datetime import datetime
 from qdrant_client import models, QdrantClient
 from qdrant_client.http.models import PointStruct
 
@@ -93,12 +93,13 @@ class LTM():
             if self.verbose:
                 print(
                     f"({count}/{len(results)}): vdb result score: {result.score}: {result.payload['comment']}\n")
-            formated_results.append(result.payload['comment'])
+            formated_results.append("You remember that " + result.payload['username'] + " said:" + result.payload['comment'] + ": on " + result.payload['datetime'] + ": Current date/time is:" + str(datetime.utcnow()))
         print('\n\n')
         return formated_results
 
-    def store_and_recall(self, comment):
-        doc_to_upsert = {'comment': comment}
+    def store_and_recall(self, username, comment):
+        now = datetime.utcnow()
+        doc_to_upsert = {'username': username,'comment': comment,'datetime': now}
         self.store(doc_to_upsert)
         formatted_results = self.recall(comment)
         if self.verbose:
