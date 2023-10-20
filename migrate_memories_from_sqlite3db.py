@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+import json
+import time
+from typing import List, Dict
+from datetime import datetime
+import warnings
+import gradio as gr
+import sqlite3
 import random
 from datetime import datetime
 from qdrant_client import models, QdrantClient
@@ -110,3 +118,56 @@ class LTM():
 
     def __len__(self):
         return self.qdrant.get_collection(self.collection).vectors_count
+
+
+# === Internal constants (don't change these without good reason) ===
+_MIN_ROWS_TILL_RESPONSE = 5
+_LAST_BOT_MESSAGE_INDEX = -3
+params = {
+    "display_name": "Long Term Memory",
+    "is_tab": False,
+    "limit": 5,
+    "address": "http://localhost:6333",
+    "query_output": "vdb search results",
+    'verbose': True,
+}
+
+collection = "AI"
+username = "user"
+verbose = True
+limit = 5
+address = params['address']
+
+   
+ltm = LTM(collection, verbose, limit, address=address)
+
+ 
+# Define the SQL query to fetch data
+FETCH_DATA_QUERY = """SELECT name, message, timestamp FROM long_term_memory"""
+
+# Define the path to the sqlite3 database
+database_path = "bot_memories_from_old_extension/ai/long_term_memory.db"
+
+# Function to save data
+def save(name, message):
+    # Replace this with the actual implementation of your save function
+    print(f"Saving data - Name: {name}, Message: {message}")
+    bot_long_term_memories1 = ltm.store_and_recall(name,message)
+
+# Prepare a connection to the database
+sql_conn = sqlite3.connect(database_path, check_same_thread=False)
+
+# Create a cursor to execute the query
+cursor = sql_conn.cursor()
+
+# Execute the query
+cursor.execute(FETCH_DATA_QUERY)
+
+# Iterate through the results and call the save function for each row
+for row in cursor.fetchall():
+    name, message, timestamp = row
+    save(name, message)
+
+# Close the cursor and the database connection when done
+cursor.close()
+sql_conn.close()

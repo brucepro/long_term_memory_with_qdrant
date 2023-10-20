@@ -1,17 +1,10 @@
 """
-An example of extension. It does nothing, but you can add transformations
-before the return statements to customize the webui behavior.
-
-Starting from history_modifier and ending in output_modifier, the
-functions are declared in the same order that they are called at
-generation time.
+Long Term Memory Module using a qdrant database.
 """
-
 import gradio as gr
 
 from extensions.long_term_memory_with_qdrant.long_term_memory import LTM
 from extensions.long_term_memory_with_qdrant.utils.chat_parsing import clean_character_message
-
 from modules import chat
 
 # === Internal constants (don't change these without good reason) ===

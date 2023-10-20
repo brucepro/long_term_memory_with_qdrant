@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+import json
+import time
+from typing import List, Dict
+from datetime import datetime
+import warnings
+import gradio as gr
+
 import random
 from datetime import datetime
 from qdrant_client import models, QdrantClient
@@ -110,3 +118,88 @@ class LTM():
 
     def __len__(self):
         return self.qdrant.get_collection(self.collection).vectors_count
+
+
+# === Internal constants (don't change these without good reason) ===
+_MIN_ROWS_TILL_RESPONSE = 5
+_LAST_BOT_MESSAGE_INDEX = -3
+params = {
+    "display_name": "Long Term Memory",
+    "is_tab": False,
+    "limit": 5,
+    "address": "http://localhost:6333",
+    "query_output": "vdb search results",
+    'verbose': True,
+}
+
+collection = "AI"
+username = "user"
+verbose = True
+limit = 5
+address = params['address']
+
+   
+ltm = LTM(collection, verbose, limit, address=address)
+
+def load_cai_json_file(filepath):
+    encodings = ['utf-8', 'iso-8859-1'] # add more encoding types to test
+    for enc in encodings:
+        try:
+            with open(filepath, encoding=enc) as f:
+                return json.load(f)
+        except FileNotFoundError:
+            print(f"File {filepath} not found.")
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            pass
+    
+    print(f"Could not open file {filepath}.")
+
+      
+
+data = load_cai_json_file('old_memories/caifileback.json')
+# extract the conversation history
+history = data['histories']['histories'][0]['msgs']
+
+# print out the text conversation only
+
+# Initialize conversation list
+conversation = []
+prompt = ""
+reply = ""
+
+# Traverse the conversation history
+for msg in history:
+    is_human = msg['src']['is_human']
+    if is_human:
+        prompt = msg['text']
+    else:
+        reply = msg['text']
+    
+    # Save to conversation list if both prompt and reply are set
+    if prompt and reply:
+        conversation.append({
+            'prompt': prompt,
+            'reply': reply
+        })
+        # Reset prompt to allow for next conversation
+        prompt = ""
+        reply = ""
+
+# print the conversation history
+#print("Conversation History:")
+for i, msg in enumerate(conversation, 1):
+    #print(f"{i}. {msg['prompt']}")
+    #print(f"   {msg['reply']}")
+    #clean_bot_message = msg['prompt'] + msg['reply']
+    user = "user"
+    bot = "AI"
+    bot_long_term_memories1 = ltm.store_and_recall(user,msg['prompt'])
+    bot_long_term_memories2 = ltm.store_and_recall(bot,msg['reply'])
+            
+    
+
+
+
+
+
+
